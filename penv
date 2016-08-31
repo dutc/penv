@@ -1,0 +1,79 @@
+#!/usr/bin/env zsh
+
+rel_base=/src/install
+
+zparseopts -D -- P+:=abs_paths p+:=rel_paths s+:=env_vars c+:=cmds || exit
+
+for p in ${(@)abs_paths:#-P}; do
+    prefixes=($p $prefixes)
+done
+for p in ${(@)rel_paths:#-p}; do
+    prefixes=("$rel_base/$p" $prefixes)
+done
+
+bin_path=("$PATH")
+library_path=("$LD_LIBRARY_PATH")
+include_path=("$CPPFLAGS")
+linker_path=("$LDFLAGS")
+man_path=("$MANPATH")
+
+for p in ${(@)prefixes}; do
+    bin_path=("$p/bin" $bin_path)
+    bin_path=("$p/sbin" $bin_path)
+    library_path=("$p/lib" $library_path)
+    include_path=("-I$p/include" $include_path)
+    linker_path=("-L$p/lib" $linker_path)
+    man_path=("$p/share/man" $man_path)
+    cflags=("-Wl,-rpath=$p/lib" $cflags)
+done
+
+for s in ${(@)env_vars:#-s}; do
+    var=("$(env \
+            PATH="${(j.:.)bin_path}" \
+            LD_LIBRARY_PATH="${(j.:.)library_path}" \
+            LD_RUN_PATH="${(j.:.)library_path}" \
+            CPPFLAGS="${(j. .)include_path}" \
+            LDFLAGS="${(j. .)linker_path}" \
+            MAN_PATH="${(j.:.)man_path}" \
+            CFLAGS="${(j.:.)cflags}" \
+            ${(@)vars} \
+            envsubst <<< $s)")
+    vars=($vars "$(env \
+                   PATH="${(j.:.)bin_path}" \
+                   LD_LIBRARY_PATH="${(j.:.)library_path}" \
+                   LD_RUN_PATH="${(j.:.)library_path}" \
+                   CPPFLAGS="${(j. .)include_path}" \
+                   LDFLAGS="${(j. .)linker_path}" \
+                   MAN_PATH="${(j.:.)man_path}" \
+                   CFLAGS="${(j.:.)cflags}" \
+                   ${(@)vars} \
+                   zsh -c "eval echo $s")")
+done
+
+for c in ${(@)cmds:#-c}; do
+    env \
+        PREFIXES="${(j.:.)prefixes}" \
+        PATH="${(j.:.)bin_path}" \
+        LD_LIBRARY_PATH="${(j.:.)library_path}" \
+        LD_RUN_PATH="${(j.:.)library_path}" \
+        CPPFLAGS="${(j. .)include_path}" \
+        LDFLAGS="${(j. .)linker_path}" \
+        MAN_PATH="${(j.:.)man_path}" \
+        CFLAGS="${(j.:.)cflags}" \
+        ${(@)vars} \
+        $SHELL -c "$c"
+done
+
+if [[ -z "$cmds" ]]; then
+    env \
+        PREFIXES="${(j.:.)prefixes}" \
+        PATH="${(j.:.)bin_path}" \
+        LD_LIBRARY_PATH="${(j.:.)library_path}" \
+        LD_RUN_PATH="${(j.:.)library_path}" \
+        CPPFLAGS="${(j. .)include_path}" \
+        LDFLAGS="${(j. .)linker_path}" \
+        MAN_PATH="${(j.:.)man_path}" \
+        CFLAGS="${(j.:.)cflags}" \
+        ${(@)vars} \
+        "$@"
+fi
