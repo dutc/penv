@@ -2,6 +2,9 @@
 
 local curcontext="$curcontext" environ e
 local -a args
+local -a penvpath
+
+penvpath=( ${(s.:.)PENVPATH} )
 
 zstyle -a ":completion:${curcontext}:" environ environ
 
@@ -10,8 +13,8 @@ for e in "${environ[@]}"; do
 done
 
 args=(
-	  '*-P[absolute path]:abs. path:_files'
-	  '*-p[relative path from /src/install]:rel. path:_files -W /src/install'
+	  '*-P[absolute path]:abs. path:_path_files -/'
+	  '*-p[relative path from /src/install]:rel. path:_path_files -/ -W penvpath'
 )
 
 _arguments $args \

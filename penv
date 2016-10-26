@@ -1,14 +1,17 @@
 #!/usr/bin/env zsh
 
-rel_base=/src/install
-
 zparseopts -D -- P+:=abs_paths p+:=rel_paths s+:=env_vars c+:=cmds || exit
 
 for p in ${(@)abs_paths:#-P}; do
     prefixes=($p $prefixes)
 done
 for p in ${(@)rel_paths:#-p}; do
-    prefixes=("$rel_base/$p" $prefixes)
+    for b in ${(s.:.)PENVPATH}; do
+        if [[ -e "$b/$p" ]] then
+            prefixes=("$b/$p" $prefixes)
+            break
+        fi
+    done
 done
 
 bin_path=("$PATH")
