@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 
-zparseopts -D -- P+:=abs_paths p+:=rel_paths s+:=env_vars c+:=cmds || exit
+zparseopts -D -- P+:=abs_paths p+:=rel_paths f+:=env_files s+:=env_vars c+:=cmds || exit
 
 for p in ${(@)abs_paths:#-P}; do
     prefixes=($p $prefixes)
@@ -21,13 +21,17 @@ linker_path=("$LDFLAGS")
 man_path=("$MANPATH")
 
 for p in ${(@)prefixes}; do
-    bin_path=("$p/bin" $bin_path)
-    bin_path=("$p/sbin" $bin_path)
-    library_path=("$p/lib" $library_path)
-    include_path=("-I$p/include" $include_path)
-    linker_path=("-L$p/lib" $linker_path)
-    man_path=("$p/share/man" $man_path)
-    cflags=("-Wl,-rpath=$p/lib" $cflags)
+    [[ -e "$p/bin" ]]       && bin_path=("$p/bin" $bin_path)
+    [[ -e "$p/sbin" ]]      && bin_path=("$p/sbin" $bin_path)
+    [[ -e "$p/include" ]]   && include_path=("-I$p/include" $include_path)
+    [[ -e "$p/share/man" ]] && man_path=("$p/share/man" $man_path)
+    [[ -e "$p/lib" ]]       && library_path=("$p/lib" $library_path)
+    [[ -e "$p/lib" ]]       && linker_path=("-L$p/lib" $linker_path)
+    [[ -e "$p/lib" ]]       && cflags=("-Wl,-rpath=$p/lib" $cflags)
+done
+
+for f in ${(@)env_files:#-f}; do
+    source $f
 done
 
 for s in ${(@)env_vars:#-s}; do
@@ -68,7 +72,7 @@ for c in ${(@)cmds:#-c}; do
 done
 
 if [[ -z "$cmds" ]]; then
-    env \
+    exec env \
         PREFIXES="${(j.:.)prefixes}" \
         PATH="${(j.:.)bin_path}" \
         LD_LIBRARY_PATH="${(j.:.)library_path}" \
